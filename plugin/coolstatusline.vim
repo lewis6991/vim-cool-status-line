@@ -1,23 +1,34 @@
-function! s:SetHighlightGroup(group, fg_colour, bg_colour)
+function! s:SetHighlightGroup(group, fg_colours, bg_colours)
     let highlight_cmd = 'hi '.a:group
 
-    if a:fg_colour[0] != ''
-        let highlight_cmd .= ' ctermfg='.a:fg_colour[0]
+    if a:fg_colours[0] != ''
+        let highlight_cmd .= ' ctermfg='.a:fg_colours[0]
     endif
 
-    if a:bg_colour[0] != ''
-        let highlight_cmd .= ' ctermbg='.a:bg_colour[0]
+    if a:bg_colours[0] != ''
+        let highlight_cmd .= ' ctermbg='.a:bg_colours[0]
     endif
 
-    if a:fg_colour[1] != ''
-        let highlight_cmd .= ' guifg='.a:fg_colour[1]
+    if a:fg_colours[1] != ''
+        let highlight_cmd .= ' guifg='.a:fg_colours[1]
     endif
 
-    if a:bg_colour[1] != ''
-        let highlight_cmd .= ' guibg='.a:bg_colour[1]
+    if a:bg_colours[1] != ''
+        let highlight_cmd .= ' guibg='.a:bg_colours[1]
     endif
 
     exec highlight_cmd
+endfunction
+
+function! s:GetColour(group, attr, gui_mode)
+    return synIDattr(synIDtrans(hlID(a:group)), a:attr, a:gui_mode)
+endfunction
+
+function! s:GetColour2(group, attr)
+    return [
+        \ s:GetColour(a:group, a:attr, 'cterm'),
+        \ s:GetColour(a:group, a:attr, 'gui'  )
+        \ ]
 endfunction
 
 function! coolstatusline#Mode()
@@ -52,17 +63,6 @@ function! coolstatusline#Mode()
    return l:mode_text
 endfunction
 
-function! s:GetColour(group, attr, gui_mode)
-    return synIDattr(synIDtrans(hlID(a:group)), a:attr, a:gui_mode)
-endfunction
-
-function! s:GetColour2(group, attr)
-    return [
-        \ s:GetColour(a:group, a:attr, 'cterm'),
-        \ s:GetColour(a:group, a:attr, 'gui'  )
-        \ ]
-endfunction
-
 function! s:SetStatusHighlightGroups()
 
     let colour_text     = s:GetColour2('Cursor'      , 'bg')
@@ -82,10 +82,6 @@ function! s:SetStatusHighlightGroups()
 endfunction
 
 function! coolstatusline#GetGitBranch()
-  if !exists('*fugitive#head')
-    return ''
-  endif
-
   let name = fugitive#head(7)
   if empty(name)
     let dir = fugitive#extract_git_dir(expand('%'))
@@ -120,9 +116,9 @@ endfunction
 function! s:SetStatusLine()
     call s:SetStatusHighlightGroups()
 
-    let use_symbols = 1
-    let show_hunks  = 1
-    let show_branch = 1
+    if !exists('g:coolstatusline_use_symbols')
+        let g:coolstatusline_use_symbols != 0
+    endif
 
     " left-align everything past this point
     let &stl="%<"
@@ -130,21 +126,21 @@ function! s:SetStatusLine()
     let &stl.="%5* "
     let &stl.="%{coolstatusline#Mode()} "
 
-    if use_symbols
+    if g:coolstatusline_use_symbols
         let &stl.="%4*"
     endif
 
-    let &stl.="%3*"
+    let &stl.="%3* "
 
-    if show_hunks
-        let &stl.="%( %{coolstatusline#GetHunks()} %)"
+    if exists('*GitGutterGetHunkSummary')
+        let &stl.="%(%{coolstatusline#GetHunks()} %)"
     endif
 
-    if show_branch
+    if exists('*fugitive#head')
         let &stl.="%( %{coolstatusline#GetGitBranch()} %)"
     endif
 
-    if use_symbols
+    if g:coolstatusline_use_symbols
         let &stl.="%2*"
     endif
 
@@ -162,22 +158,26 @@ function! s:SetStatusLine()
 
     let &stl.="%( %{&filetype} %)"
 
-    if use_symbols
+    if g:coolstatusline_use_symbols
         let &stl.="%2*"
     endif
 
     let &stl.="%3* "
     let &stl.="%{&fileformat} "
 
-    if use_symbols
+    if g:coolstatusline_use_symbols
         let &stl.="%4*"
     endif
 
     let &stl.="%5* "
-    let &stl.="%2.p%%  %3.l/%L☰ : %-2.c "
+    let &stl.="%2.p%%  %2.l/%L☰ : %-2.c "
+endfunction
+
+function! coolstatusline#Refresh()
+    call s:SetStatusHighlightGroups()
 endfunction
 
 augroup status_line
-    au!
-    au ColorScheme,VimEnter * call s:SetStatusLine()
+    autocmd!
+    autocmd ColorScheme,VimEnter * call s:SetStatusLine()
 augroup END
