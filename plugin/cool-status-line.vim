@@ -1,4 +1,4 @@
-function! SetHighlightGroup(group, fg_colour, bg_colour) "{{{
+function! SetHighlightGroup(group, fg_colour, bg_colour)
     let highlight_cmd = 'hi '.a:group
 
     if a:fg_colour[0] != ''
@@ -18,9 +18,9 @@ function! SetHighlightGroup(group, fg_colour, bg_colour) "{{{
     endif
 
     exec highlight_cmd
-endfunction "}}}
+endfunction
 
-function! Mode() "{{{
+function! Mode()
     let l:mode = mode()
 
     if l:mode ==# "n"
@@ -50,20 +50,20 @@ function! Mode() "{{{
     call SetHighlightGroup('User5', '', l:mode_colour)
 
    return l:mode_text
-endfunction "}}}
+endfunction
 
-function! GetColour(group, attr, gui_mode) "{{{
+function! GetColour(group, attr, gui_mode)
     return synIDattr(synIDtrans(hlID(a:group)), a:attr, a:gui_mode)
-endfunction "}}}
+endfunction
 
-function! GetColour2(group, attr) "{{{
+function! GetColour2(group, attr)
     return [
         \ GetColour(a:group, a:attr, 'cterm'),
         \ GetColour(a:group, a:attr, 'gui'  )
         \ ]
-endfunction "}}}
+endfunction
 
-function! SetStatusHighlightGroups() "{{{
+function! SetStatusHighlightGroups()
 
     let colour_text     = GetColour2('Cursor'      , 'bg')
     let colour_bg_light = GetColour2('StatusLine'  , 'bg')
@@ -79,9 +79,9 @@ function! SetStatusHighlightGroups() "{{{
     call SetHighlightGroup('User5', colour_bg_dark , ''             )
 
     call Mode()
-endfunction "}}}
+endfunction
 
-function! GetGitBranch() "{{{
+function! GetGitBranch()
   if !exists('*fugitive#head')
     return ''
   endif
@@ -106,18 +106,18 @@ function! GetGitBranch() "{{{
     endif
   endif
   return name
-endfunction "}}}
+endfunction
 
-function! GetHunks() "{{{
+function! GetHunks()
     let hunks = GitGutterGetHunkSummary()
     if hunks[0] == 0 && hunks[1] == 0 && hunks[2] == 0
         return ""
     else
         return "+".hunks[0]." ~".hunks[1]." -".hunks[2]
     endif
-endfunction "}}}
+endfunction
 
-function! SetStatusLine() "{{{
+function! SetStatusLine()
     call SetStatusHighlightGroups()
 
     let use_symbols = 1
@@ -175,9 +175,9 @@ function! SetStatusLine() "{{{
 
     let &stl.="%5* "
     let &stl.="%2.p%%  %3.l/%L☰ : %-2.c "
-endfunction "}}}
+endfunction
 
-augroup status_line "{{{
+augroup status_line
     au!
     au ColorScheme,VimEnter * call SetStatusLine()
-augroup END "}}}
+augroup END
