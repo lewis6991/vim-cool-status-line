@@ -1,4 +1,4 @@
-function! SetHighlightGroup(group, fg_colour, bg_colour)
+function! s:SetHighlightGroup(group, fg_colour, bg_colour)
     let highlight_cmd = 'hi '.a:group
 
     if a:fg_colour[0] != ''
@@ -20,7 +20,7 @@ function! SetHighlightGroup(group, fg_colour, bg_colour)
     exec highlight_cmd
 endfunction
 
-function! Mode()
+function! coolstatusline#Mode()
     let l:mode = mode()
 
     if l:mode ==# "n"
@@ -46,42 +46,42 @@ function! Mode()
         let l:mode_text   = l:mode
     endif
 
-    call SetHighlightGroup('User4', l:mode_colour, '')
-    call SetHighlightGroup('User5', '', l:mode_colour)
+    call s:SetHighlightGroup('User4', l:mode_colour, '')
+    call s:SetHighlightGroup('User5', '', l:mode_colour)
 
    return l:mode_text
 endfunction
 
-function! GetColour(group, attr, gui_mode)
+function! s:GetColour(group, attr, gui_mode)
     return synIDattr(synIDtrans(hlID(a:group)), a:attr, a:gui_mode)
 endfunction
 
-function! GetColour2(group, attr)
+function! s:GetColour2(group, attr)
     return [
-        \ GetColour(a:group, a:attr, 'cterm'),
-        \ GetColour(a:group, a:attr, 'gui'  )
+        \ s:GetColour(a:group, a:attr, 'cterm'),
+        \ s:GetColour(a:group, a:attr, 'gui'  )
         \ ]
 endfunction
 
-function! SetStatusHighlightGroups()
+function! s:SetStatusHighlightGroups()
 
-    let colour_text     = GetColour2('Cursor'      , 'bg')
-    let colour_bg_light = GetColour2('StatusLine'  , 'bg')
-    let colour_bg_dark  = GetColour2('CursorLineNr', 'bg')
+    let colour_text     = s:GetColour2('Cursor'      , 'bg')
+    let colour_bg_light = s:GetColour2('StatusLine'  , 'bg')
+    let colour_bg_dark  = s:GetColour2('CursorLineNr', 'bg')
 
-    let g:colour_normal = GetColour2('Title'  , 'fg')
-    let g:colour_insert = GetColour2('MoreMsg', 'fg')
+    let g:colour_normal = s:GetColour2('Title'  , 'fg')
+    let g:colour_insert = s:GetColour2('MoreMsg', 'fg')
 
-    call SetHighlightGroup('User1', colour_text    , colour_bg_dark )
-    call SetHighlightGroup('User2', colour_bg_light, colour_bg_dark )
-    call SetHighlightGroup('User3', colour_text    , colour_bg_light)
-    call SetHighlightGroup('User4', ''             , colour_bg_light)
-    call SetHighlightGroup('User5', colour_bg_dark , ''             )
+    call s:SetHighlightGroup('User1', colour_text    , colour_bg_dark )
+    call s:SetHighlightGroup('User2', colour_bg_light, colour_bg_dark )
+    call s:SetHighlightGroup('User3', colour_text    , colour_bg_light)
+    call s:SetHighlightGroup('User4', ''             , colour_bg_light)
+    call s:SetHighlightGroup('User5', colour_bg_dark , ''             )
 
-    call Mode()
+    call coolstatusline#Mode()
 endfunction
 
-function! GetGitBranch()
+function! coolstatusline#GetGitBranch()
   if !exists('*fugitive#head')
     return ''
   endif
@@ -108,7 +108,7 @@ function! GetGitBranch()
   return name
 endfunction
 
-function! GetHunks()
+function! coolstatusline#GetHunks()
     let hunks = GitGutterGetHunkSummary()
     if hunks[0] == 0 && hunks[1] == 0 && hunks[2] == 0
         return ""
@@ -117,8 +117,8 @@ function! GetHunks()
     endif
 endfunction
 
-function! SetStatusLine()
-    call SetStatusHighlightGroups()
+function! s:SetStatusLine()
+    call s:SetStatusHighlightGroups()
 
     let use_symbols = 1
     let show_hunks  = 1
@@ -128,7 +128,7 @@ function! SetStatusLine()
     let &stl="%<"
 
     let &stl.="%5* "
-    let &stl.="%{Mode()} "
+    let &stl.="%{coolstatusline#Mode()} "
 
     if use_symbols
         let &stl.="%4*"
@@ -137,11 +137,11 @@ function! SetStatusLine()
     let &stl.="%3*"
 
     if show_hunks
-        let &stl.="%( %{GetHunks()} %)"
+        let &stl.="%( %{coolstatusline#GetHunks()} %)"
     endif
 
     if show_branch
-        let &stl.="%( %{GetGitBranch()} %)"
+        let &stl.="%( %{coolstatusline#GetGitBranch()} %)"
     endif
 
     if use_symbols
@@ -179,5 +179,5 @@ endfunction
 
 augroup status_line
     au!
-    au ColorScheme,VimEnter * call SetStatusLine()
+    au ColorScheme,VimEnter * call s:SetStatusLine()
 augroup END
