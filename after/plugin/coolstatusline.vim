@@ -61,10 +61,10 @@ function! s:SetStatusHighlightGroups()
     call s:SetHighlightGroup('User4', ''             , colour_bg_light)
     call s:SetHighlightGroup('User5', colour_bg_dark , ''             )
 
-    call coolstatusline#Mode()
+    call coolstatusline#GetMode()
 endfunction
 
-function! coolstatusline#Mode()
+function! coolstatusline#GetMode()
     let l:mode = mode()
 
     if l:mode ==# "n"
@@ -126,17 +126,43 @@ function! s:GetBranchFromVCSCommand()
     if exists('*VCSCommandEnableBufferSetup') && &ft != 'dirvish'
         call VCSCommandEnableBufferSetup()
         if exists('b:VCSCommandBufferInfo') && len(b:VCSCommandBufferInfo) != 0
-            return b:VCSCommandBufferInfo[0]
+            return g:cool_symbols.branch.' '.b:VCSCommandBufferInfo[0]
         endif
     endif
     return ''
 endfunction
 
 function! coolstatusline#GetBranch()
+    if winwidth(0) < 75
+        return ''
+    endif
+
     return s:GetBranchFromVCSCommand()
 endfunction
 
+function! coolstatusline#GetFileType()
+    if winwidth(0) - len(&filetype) < 80
+        return ''
+    endif
+
+    return &filetype
+
+endfunction
+
+function! coolstatusline#GetFileFormat()
+    if winwidth(0) < 90
+        return ''
+    endif
+
+    return &fileformat
+
+endfunction
+
 function! coolstatusline#GetHunks()
+    if winwidth(0) < 70
+        return ''
+    endif
+
     if s:has_signify && sy#buffer_is_active()
         let hunks = sy#repo#get_stats()
     elseif s:has_gitgutter
@@ -146,30 +172,30 @@ function! coolstatusline#GetHunks()
     endif
 
     if len(hunks) != 3
-        return ""
-    elseif hunks[0] == 0 && hunks[1] == 0 && hunks[2] == 0
-        return ""
+        return ''
     else
-        if hunks[0] == 0
-            let hunk_add = ''
-        else
-            let hunk_add = '+'.hunks[0].' '
-        endif
+        let hunk_symbols = ['+', '~', '-']
+        let result = ''
 
-        if hunks[1] == 0
-            let hunk_changed = ''
-        else
-            let hunk_changed = '~'.hunks[1].' '
-        endif
+        for i in [0, 1, 2]
+            if hunks[i] != 0
+                let result .= hunk_symbols[i].hunks[i]
+                if i < 2 && hunks[i+1] != 0
+                    let result .= ' '
+                endif
+            endif
+        endfor
 
-        if hunks[2] == 0
-            let hunk_deleted = ''
-        else
-            let hunk_deleted = '-'.hunks[2].' '
-        endif
-
-        return hunk_add.hunk_changed.hunk_deleted
+        return result
     endif
+endfunction
+
+function! coolstatusline#GetRuler()
+    return "%2.p%% ".g:cool_symbols.lineno." %2.l/%L".g:cool_symbols.line." : %2.c "
+endfunction
+
+function! coolstatusline#GetSection(name)
+    return coolstatusline#Get{a:name}()
 endfunction
 
 function! s:GetSymbols()
@@ -192,39 +218,51 @@ function! s:GetSymbols()
     endif
 endfunction
 
+let g:cool_symbols = s:GetSymbols()
+
+function! coolstatusline#TestWidth()
+    if winwidth(0) < 100
+        return "BYE"
+    else
+        return "HELLO"
+    endif
+endfunction
+
 function! s:SetStatusLine()
     call s:SetStatusHighlightGroups()
 
-    let symbols = s:GetSymbols()
+    "-------------------------------------------------------------------"
+    "   %5   >     %3       >         %1         <     %3     <   %5    "
+    "-------------------------------------------------------------------"
+    " Mode   > Hunks Branch > Filename  Filetype < Fileformat < Ruler "
+    "-------------------------------------------------------------------"
 
-    " left-align everything past this point
-    let &stl="%<"
+    " For explanation of the format expressions see :help statusline
 
     let &stl.="%5* "
-    let &stl.="%{coolstatusline#Mode()} "
-    let &stl.="%4*".symbols.left_sep
-    let &stl.="%3* "
-    let &stl.="%(%{coolstatusline#GetHunks()}%)"
-    let &stl.="%(".symbols.branch." %{coolstatusline#GetBranch()} %)"
-    let &stl.="%2*".symbols.left_sep
+    let &stl.="%{coolstatusline#GetSection('Mode')} "
 
-    " tail filename
-    let &stl.="%1* %t"
+    let &stl.="%4*".g:cool_symbols.left_sep."%3* "
 
-    " read only, modified, modifiable flags in brackets
-    let &stl.="%([%R%M]%) "
+    let &stl.="%(%{coolstatusline#GetSection('Hunks')} %)"
+    let &stl.="%(%{coolstatusline#GetSection('Branch')} %)"
 
-    " right-align everything past this point
+    let &stl.="%2*".g:cool_symbols.left_sep."%1* "
+
+    let &stl.="%t%([%R%M]%) "
+
     let &stl.="%="
-    let &stl.="%(%{(&ro!=0?'[readonly]':'')} %)"
-    let &stl.="%( %{&filetype} %)"
-    let &stl.="%2*".symbols.right_sep
-    let &stl.="%3* "
-    let &stl.="%{&fileformat} "
-    let &stl.="%4*".symbols.right_sep
 
-    let &stl.="%5* "
-    let &stl.="%2.p%% ".symbols.lineno." %2.l/%L".symbols.line." : %2.c "
+    let &stl.="%(%{(&ro!=0?'[readonly]':'')} %)"
+    let &stl.="%(%{coolstatusline#GetSection('FileType')} %)"
+
+    let &stl.="%2*".g:cool_symbols.right_sep."%3* "
+
+    let &stl.="%(%{coolstatusline#GetSection('FileFormat')} %)"
+
+    let &stl.="%4*".g:cool_symbols.right_sep."%5* "
+
+    let &stl.=coolstatusline#GetSection('Ruler')
 endfunction
 
 function! coolstatusline#Refresh()
