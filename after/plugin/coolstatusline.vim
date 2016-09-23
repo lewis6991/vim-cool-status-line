@@ -10,7 +10,7 @@ let s:has_gitgutter  = exists('g:loaded_gitgutter' )
 let s:has_signify    = exists('g:loaded_signify'   )
 
 if !exists('g:coolstatusline_use_symbols')
-    let g:coolstatusline_use_symbols != 0
+    let g:coolstatusline_use_symbols = 0
 endif
 
 function! s:SetHighlightGroup(group, fg_colours, bg_colours)
