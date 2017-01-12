@@ -24,25 +24,21 @@ function! s:SetHighlightGroup(group, fg_colours, bg_colours)
     exec highlight_cmd
 endfunction
 
-function! s:GetColour(group, attr, gui_mode)
-    return synIDattr(synIDtrans(hlID(a:group)), a:attr, a:gui_mode)
-endfunction
-
-function! s:GetColour2(group, attr)
+function! s:GetColour(group, attr)
     return [
-        \ s:GetColour(a:group, a:attr, 'cterm'),
-        \ s:GetColour(a:group, a:attr, 'gui'  )
+        \ synIDattr(synIDtrans(hlID(a:group)), a:attr, 'cterm'),
+        \ synIDattr(synIDtrans(hlID(a:group)), a:attr, 'gui'  )
         \ ]
 endfunction
 
 function! s:SetStatusHighlightGroups()
 
-    let colour_text     = s:GetColour2('Cursor'      , 'bg')
-    let colour_bg_light = s:GetColour2('StatusLine'  , 'bg')
-    let colour_bg_dark  = s:GetColour2('CursorLineNr', 'bg')
+    let colour_text     = s:GetColour('Cursor'      , 'bg')
+    let colour_bg_light = s:GetColour('StatusLine'  , 'bg')
+    let colour_bg_dark  = s:GetColour('CursorLineNr', 'bg')
 
-    let g:colour_normal = s:GetColour2('Title'  , 'fg')
-    let g:colour_insert = s:GetColour2('MoreMsg', 'fg')
+    let g:colour_normal = s:GetColour('Title'  , 'fg')
+    let g:colour_insert = s:GetColour('MoreMsg', 'fg')
 
     call s:SetHighlightGroup('User1', colour_text    , colour_bg_dark )
     call s:SetHighlightGroup('User2', colour_bg_light, colour_bg_dark )
@@ -112,10 +108,10 @@ function! s:GetBranchFromFugitive()
 endfunction
 
 function! s:GetBranchFromVCSCommand()
-    if exists('*VCSCommandEnableBufferSetup') && &ft != 'dirvish'
+    if exists('*VCSCommandEnableBufferSetup')
         call VCSCommandEnableBufferSetup()
         if exists('b:VCSCommandBufferInfo') && len(b:VCSCommandBufferInfo) != 0
-            return g:cool_symbols.branch.' '.b:VCSCommandBufferInfo[0]
+            return b:VCSCommandBufferInfo[0]
         endif
     endif
     return ''
@@ -126,7 +122,7 @@ function! s:GetSVNRevisionFromShell()
     for l:line in l:svn_output
         if l:line =~ 'Revision:.*'
             let l:revision = substitute(l:line, 'Revision: \(\d\+\)','\1', "")
-            return 'r'.l:revision
+            return l:revision
         endif
     endfor
     return ""
@@ -135,9 +131,12 @@ endfunction
 function! coolstatusline#GetBranch()
     if winwidth(0) < 75
         return ''
+    elseif s:branch == ''
+        return ''
+    else
+        return g:cool_symbols.branch.' '.s:branch
     endif
 
-    return s:branch
 endfunction
 
 function! coolstatusline#GetFileType()
@@ -194,12 +193,8 @@ function! coolstatusline#GetRuler()
     return "%2.p%% ".g:cool_symbols.lineno." %2.l/%L".g:cool_symbols.line." : %2.c "
 endfunction
 
-function! coolstatusline#GetSection(name)
-    return coolstatusline#Get{a:name}()
-endfunction
-
 function! s:GetSymbols()
-    if g:coolstatusline_use_symbols
+    if exists('g:coolstatusline_use_symbols') && g:coolstatusline_use_symbols
         return {
             \     'branch'    : '',
             \     'left_sep'  : '',
@@ -234,35 +229,23 @@ function! s:SetStatusLine()
     "-------------------------------------------------------------------"
     " Mode   > Hunks Branch > Filename  Filetype < Fileformat < Ruler "
     "-------------------------------------------------------------------"
-
     " For explanation of the format expressions see :help statusline
 
     let &stl=""
-
     let &stl.="%5* "
-    let &stl.="%{coolstatusline#GetSection('Mode')} "
-
+    let &stl.="%{coolstatusline#GetMode()} "
     let &stl.="%4*".g:cool_symbols.left_sep."%3* "
-
-    let &stl.="%(%{coolstatusline#GetSection('Hunks')} %)"
-    let &stl.="%(%{coolstatusline#GetSection('Branch')} %)"
-
+    let &stl.="%(%{coolstatusline#GetHunks()} %)"
+    let &stl.="%(%{coolstatusline#GetBranch()} %)"
     let &stl.="%2*".g:cool_symbols.left_sep."%1* "
-
     let &stl.="%t%([%R%M]%) "
-
     let &stl.="%="
-
     let &stl.="%(%{(&ro!=0?'[readonly]':'')} %)"
-    let &stl.="%(%{coolstatusline#GetSection('FileType')} %)"
-
+    let &stl.="%(%{coolstatusline#GetFileType()} %)"
     let &stl.="%2*".g:cool_symbols.right_sep."%3* "
-
-    let &stl.="%(%{coolstatusline#GetSection('FileFormat')} %)"
-
+    let &stl.="%(%{coolstatusline#GetFileFormat()} %)"
     let &stl.="%4*".g:cool_symbols.right_sep."%5* "
-
-    let &stl.=coolstatusline#GetSection('Ruler')
+    let &stl.=coolstatusline#GetRuler()
 endfunction
 
 function! coolstatusline#Refresh()
@@ -293,10 +276,7 @@ let s:has_gitgutter  = exists('g:loaded_gitgutter' )
 let s:has_signify    = exists('g:loaded_signify'   )
 
 let s:branch = ""
-
-if !exists('g:coolstatusline_use_symbols')
-    let g:coolstatusline_use_symbols = 0
-endif
+let s:ruler  = ""
 
 augroup status_line
     autocmd!
