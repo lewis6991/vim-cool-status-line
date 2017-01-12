@@ -2,17 +2,6 @@ if &cp || v:version < 702 || (exists('g:loaded_coolstatusline') && g:loaded_cool
     finish
 endif
 
-let g:loaded_coolstatusline = 1
-
-let s:has_fugitive   = exists('g:loaded_fugitive'  )
-let s:has_vcscommand = exists('g:loaded_VCSCommand')
-let s:has_gitgutter  = exists('g:loaded_gitgutter' )
-let s:has_signify    = exists('g:loaded_signify'   )
-
-if !exists('g:coolstatusline_use_symbols')
-    let g:coolstatusline_use_symbols = 0
-endif
-
 function! s:SetHighlightGroup(group, fg_colours, bg_colours)
     let highlight_cmd = 'hi '.a:group
 
@@ -96,7 +85,7 @@ function! coolstatusline#GetMode()
    return l:mode_text
 endfunction
 
-function! coolstatusline#GetGitBranch()
+function! s:GetBranchFromFugitive()
     if !exists('*fugitive#head')
         return ''
     endif
@@ -132,12 +121,23 @@ function! s:GetBranchFromVCSCommand()
     return ''
 endfunction
 
+function! s:GetSVNRevisionFromShell()
+    let l:svn_output = split(system('svn info '.expand('%t')), "\n")
+    for l:line in l:svn_output
+        if l:line =~ 'Revision:.*'
+            let l:revision = substitute(l:line, 'Revision: \(\d\+\)','\1', "")
+            return 'r'.l:revision
+        endif
+    endfor
+    return ""
+endfunction
+
 function! coolstatusline#GetBranch()
     if winwidth(0) < 75
         return ''
     endif
 
-    return s:GetBranchFromVCSCommand()
+    return s:branch
 endfunction
 
 function! coolstatusline#GetFileType()
@@ -218,8 +218,6 @@ function! s:GetSymbols()
     endif
 endfunction
 
-let g:cool_symbols = s:GetSymbols()
-
 function! coolstatusline#TestWidth()
     if winwidth(0) < 100
         return "BYE"
@@ -238,6 +236,8 @@ function! s:SetStatusLine()
     "-------------------------------------------------------------------"
 
     " For explanation of the format expressions see :help statusline
+
+    let &stl=""
 
     let &stl.="%5* "
     let &stl.="%{coolstatusline#GetSection('Mode')} "
@@ -269,7 +269,37 @@ function! coolstatusline#Refresh()
     call s:SetStatusHighlightGroups()
 endfunction
 
+function! s:SetBranch()
+    if s:has_vcscommand
+        let s:branch = s:GetBranchFromVCSCommand()
+    endif
+
+    if s:branch == '' && s:has_fugitive
+        let s:branch = s:GetBranchFromFugitive()
+    endif
+
+    if s:branch == ''
+        let s:branch = s:GetSVNRevisionFromShell()
+    endif
+endfunction
+
+let g:loaded_coolstatusline = 1
+
+let g:cool_symbols = s:GetSymbols()
+
+let s:has_fugitive   = exists('g:loaded_fugitive'  )
+let s:has_vcscommand = exists('g:loaded_VCSCommand')
+let s:has_gitgutter  = exists('g:loaded_gitgutter' )
+let s:has_signify    = exists('g:loaded_signify'   )
+
+let s:branch = ""
+
+if !exists('g:coolstatusline_use_symbols')
+    let g:coolstatusline_use_symbols = 0
+endif
+
 augroup status_line
     autocmd!
     autocmd ColorScheme,VimEnter * call s:SetStatusLine()
+    autocmd BufEnter             * call s:SetBranch()
 augroup END
